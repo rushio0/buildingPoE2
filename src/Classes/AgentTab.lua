@@ -22,17 +22,38 @@ local AgentTabClass = newClass("AgentTab", "ControlHost", "Control", function(se
 	-- Controls
 	-- Display (History) - Editable for copy-paste/modification by user
 	-- code=nil to enable wrapping and variable width font
-	self.controls.display = new("EditControl", {"TOPLEFT",self,"TOPLEFT"}, {10, 10, 0, 0}, "", "Histórico da conversa aparecerá aqui...", "^%C\t\n", nil, nil, 14, nil)
+	-- Provider Selection (Ollama / Google / OpenAI)
+	self.controls.provider = new("DropDownControl", {"TOPLEFT",self,"TOPLEFT"}, {10, 10, 100, 20}, {"Ollama", "Google", "OpenAI"}, function(index, value)
+		self.agentService:SetProvider(value, self.controls.endpoint.buf, self.controls.model.buf, self.controls.apiKey.buf)
+		self:UpdateControlsVisibility()
+	end)
+	self.controls.provider.selIndex = 1
+	
+	-- API Key (Hidden for Ollama)
+	self.controls.apiKey = new("EditControl", {"LEFT",self.controls.provider,"RIGHT"}, {5, 0, 180, 20}, "", "API Key", nil, nil, nil, nil, function(buf)
+		self.agentService.apiKey = buf
+	end)
+	
+	-- Model / Endpoint (Advanced)
+	self.controls.model = new("EditControl", {"TOPLEFT",self.controls.provider,"BOTTOMLEFT"}, {0, 5, 285, 20}, "llama3", "Model Name", nil, nil, nil, nil, function(buf)
+		self.agentService.model = buf
+	end)
+	
+	self.controls.endpoint = new("EditControl", {"TOPLEFT",self.controls.model,"BOTTOMLEFT"}, {0, 5, 285, 20}, "http://localhost:11434/api/generate", "Endpoint Base URL", nil, nil, nil, nil, function(buf)
+		self.agentService.endpoint = buf
+	end)
+
+	-- Output Display (History)
+	self.controls.display = new("EditControl", {"TOPLEFT",self,"TOPLEFT"}, {10, 90, 0, 0}, "", "Histórico da conversa aparecerá aqui...", "^%C\t\n", nil, nil, 14, nil)
 	
 	-- Input
-	self.controls.input = new("EditControl", {"BOTTOMLEFT",self,"BOTTOMLEFT"}, {10, -10, 0, 80}, "", "Pergunte ao Agente sobre sua build...", "^%C\t\n", nil, nil, 14, true)
-	
-	-- Override OnKeyDown to capture Enter (since lineHeight makes it multiline by default)
+	self.controls.input = new("EditControl", {"BOTTOMLEFT",self,"BOTTOMLEFT"}, {10, -10, 0, 80}, "", "Pergunte ao Agente...", "^%C\t\n", nil, nil, 14, true)
+
+	-- Override OnKeyDown to capture Enter
 	local superOnKeyDown = self.controls.input.OnKeyDown
 	self.controls.input.OnKeyDown = function(control, key)
 		if key == "RETURN" then
 			self:OnSend()
-			-- Reset cursor/scroll if needed, but OnSend clears text
 			return control
 		end
 		if superOnKeyDown then
@@ -41,30 +62,49 @@ local AgentTabClass = newClass("AgentTab", "ControlHost", "Control", function(se
 		return control
 	end
 	
-	-- Send Button
-	self.controls.send = new("ButtonControl", {"LEFT",self.controls.input,"RIGHT"}, {10, 0, 80, 80}, "Enviar", function()
+	-- Send Button (Small icon or text next to input?) 
+	-- For sidebar, maybe just below input or small button
+	self.controls.send = new("ButtonControl", {"TOPLEFT",self.controls.input,"BOTTOMLEFT"}, {0, 5, 60, 20}, "Enviar", function()
 		self:OnSend()
 	end)
 	
-	-- Log Init
-	local file, err = io.open("AgentActions.log", "a")
-	if file then
-		file:write(string.format("[%s] AgentTab Initialized\n", os.date("%Y-%m-%d %H:%M:%S")))
-		file:close()
-	end
-	
 	-- Clear Button
-	self.controls.clear = new("ButtonControl", {"TOPRIGHT",self,"TOPRIGHT"}, {-10, 10, 60, 20}, "Limpar", function()
+	self.controls.clear = new("ButtonControl", {"LEFT",self.controls.send,"RIGHT"}, {5, 0, 60, 20}, "Limpar", function()
 		self.controls.display:SetText("")
 		self.history = {}
 	end)
 
 	-- Layout adjustments
 	self.controls.display.width = function() return self.width - 20 end
-	self.controls.display.height = function() return self.height - 110 end
-	self.controls.input.width = function() return self.width - 120 end
-
+	self.controls.display.height = function() return self.height - 110 - 90 end -- -Input area -Top controls
+	self.controls.input.width = function() return self.width - 20 end
+	
+	self:UpdateControlsVisibility()
 end)
+
+function AgentTabClass:UpdateControlsVisibility()
+	local provider = self.controls.provider.list[self.controls.provider.selIndex]
+	if provider == "Ollama" then
+		self.controls.apiKey.shown = false
+		self.controls.endpoint.buf = "http://localhost:11434/api/generate"
+		if self.controls.model.buf == "" or self.controls.model.buf == "gemini-2.0-flash" then
+			self.controls.model:SetText("llama3")
+			self.agentService.model = "llama3"
+		end
+	elseif provider == "Google" then
+		self.controls.apiKey.shown = true
+		self.controls.endpoint.buf = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+		self.controls.model:SetText("gemini-2.0-flash")
+		self.agentService.model = "gemini-2.0-flash"
+	elseif provider == "OpenAI" then
+		self.controls.apiKey.shown = true
+		self.controls.endpoint.buf = "https://api.openai.com/v1/chat/completions"
+		self.controls.model:SetText("gpt-3.5-turbo")
+	end
+	
+	self.agentService.provider = provider
+	self.agentService.endpoint = self.controls.endpoint.buf
+
 
 function AgentTabClass:OnSend()
 	local text = self.controls.input.buf
@@ -73,11 +113,11 @@ function AgentTabClass:OnSend()
 	self:AppendMessage("Você", text)
 	self.controls.input:SetText("")
 	
-	-- Settings from Config 
-	local provider = self.build.configTab.input["LLM_Provider"] or "Ollama"
-	local endpoint = self.build.configTab.input["LLM_Endpoint"] or "http://localhost:11434/api/generate"
-	local model = self.build.configTab.input["LLM_Model"] or "llama3"
-	local apiKey = self.build.configTab.input["LLM_ApiKey"] or ""
+	-- Settings from Controls
+	local provider = self.controls.provider.list[self.controls.provider.selIndex]
+	local endpoint = self.controls.endpoint.buf
+	local model = self.controls.model.buf
+	local apiKey = self.controls.apiKey.buf
 	
 	self.agentService:SetProvider(provider, endpoint, model, apiKey)
 	

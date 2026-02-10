@@ -1183,8 +1183,12 @@ function buildMode:OnFrame(inputEvents)
 		x = sideBarWidth,
 		y = 32,
 		width = main.screenW - sideBarWidth,
-		height = main.screenH - 32 - 200 -- Reserve 200px for Agent
+		height = main.screenH - 32
 	}
+	
+	-- Reserve space for Right Sidebar (Agent)
+	local rightSideBarWidth = 312
+	tabViewPort.width = tabViewPort.width - rightSideBarWidth
 	if self.viewMode == "IMPORT" then
 		self.importTab:Draw(tabViewPort, inputEvents)  
 	elseif self.viewMode == "NOTES" then
@@ -1205,21 +1209,19 @@ function buildMode:OnFrame(inputEvents)
 		self.agentTab:Draw(tabViewPort, inputEvents)
 	end
 
-	-- Draw Persistent Agent Panel at Top (or Bottom)
-	-- Using Bottom:
-	local agentHeight = 200
+	-- Draw Persistent Agent Panel at Right Sidebar
 	local agentViewPort = {
-		x = sideBarWidth,
-		y = main.screenH - agentHeight,
-		width = main.screenW - sideBarWidth,
-		height = agentHeight
+		x = main.screenW - rightSideBarWidth,
+		y = 32,
+		width = rightSideBarWidth,
+		height = main.screenH - 32
 	}
 	
-	-- Draw a separator/background for the agent panel
+	-- Draw sidebar background
 	SetDrawColor(0.1, 0.1, 0.1)
 	DrawImage(nil, agentViewPort.x, agentViewPort.y, agentViewPort.width, agentViewPort.height)
 	SetDrawColor(0.85, 0.85, 0.85)
-	DrawImage(nil, agentViewPort.x, agentViewPort.y, agentViewPort.width, 2) -- Top border of agent panel
+	DrawImage(nil, agentViewPort.x, agentViewPort.y, 4, agentViewPort.height) -- Left border of agent panel
 
 	self.agentTab:Draw(agentViewPort, inputEvents)
 

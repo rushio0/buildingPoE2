@@ -77,6 +77,7 @@ function AgentServiceClass:SendPrompt(userPrompt, history, callback)
 						 "O contexto da build J\193 EST\193 nesta mensagem. N\195O tente usar a\231\245es de 'An\225lise', apenas leia o JSON acima. " ..
 						 "Se precisar executar uma a\231\227o de MODIFICA\199\195O (ex: AllocNode), retorne APENAS o JSON da a\231\227o. " ..
 						 "NUNCA invente a\231\245es que n\227o estejam na lista (como AnalyzeTree ou WaitForAnalysis). " ..
+						 "Se estiver em d\250vida sobre o nome exato de um n\243, use a a\231\227o SearchNodes PRIMEIRO. " ..
 						 "Se for apenas conversar, responda em texto normal."
 	
 	local bodyData
@@ -91,6 +92,33 @@ function AgentServiceClass:SendPrompt(userPrompt, history, callback)
 		}
 		bodyData = dkjson.encode(request)
 		headers = "Content-Type: application/json"
+	elseif self.provider == "Google" then
+		-- Google Gemini API
+		local contents = {
+			{
+				role = "user",
+				parts = {
+					{ text = systemPrompt .. "\nUser: " .. userPrompt }
+				}
+			}
+		}
+		
+		-- Append history (Gemini format: role 'user' or 'model')
+		-- Ideally should structure history better, but for now simple prompt stitching
+		-- Future: iterate history and build 'contents' array with correct roles
+		
+		local request = {
+			contents = contents,
+			safetySettings = {
+				{ category = "HARM_CATEGORY_DANGEROUS_CONTENT", threshold = "BLOCK_NONE" },
+				{ category = "HARM_CATEGORY_HARASSMENT", threshold = "BLOCK_NONE" },
+				{ category = "HARM_CATEGORY_HATE_SPEECH", threshold = "BLOCK_NONE" },
+				{ category = "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold = "BLOCK_NONE" }
+			}
+		}
+		bodyData = dkjson.encode(request)
+		headers = "Content-Type: application/json"
+		-- API Key is passed via URL query param for Google
 	elseif self.provider == "OpenAI" then
 		-- OpenAI API (chat completions)
 		local messages = {
@@ -112,9 +140,14 @@ function AgentServiceClass:SendPrompt(userPrompt, history, callback)
 		headers = "Content-Type: application/json\nAuthorization: Bearer " .. self.apiKey
 	end
 
-	self:LogAction("SendPrompt", "Sending", "URL: " .. self.endpoint .. " | Model: " .. self.model .. " | BodyLen: " .. #bodyData)
+	local url = self.endpoint
+	if self.provider == "Google" then
+		url = url .. "?key=" .. self.apiKey
+	end
 
-	launch:DownloadPage(self.endpoint, function(response, errMsg)
+	self:LogAction("SendPrompt", "Sending", "URL: " .. url .. " | Model: " .. self.model .. " | BodyLen: " .. #bodyData)
+
+	launch:DownloadPage(url, function(response, errMsg)
 		if errMsg then
 			self:LogAction("SendPrompt", "Error", "Msg: " .. tostring(errMsg) .. " | Response: " .. tostring(response))
 			callback(nil, "Error: " .. errMsg)
@@ -132,6 +165,14 @@ function AgentServiceClass:SendPrompt(userPrompt, history, callback)
 		local text = ""
 		if self.provider == "Ollama" then
 			 text = responseData.response
+		elseif self.provider == "Google" then
+			if responseData.error then
+				callback(nil, "API Error: " .. (responseData.error.message or "Unknown"))
+				return
+			end
+			if responseData.candidates and responseData.candidates[1] and responseData.candidates[1].content and responseData.candidates[1].content.parts then
+				text = responseData.candidates[1].content.parts[1].text
+			end
 		elseif self.provider == "OpenAI" then
 			 if responseData.error then
 				callback(nil, "API Error: " .. (responseData.error.message or "Unknown"))
@@ -204,11 +245,25 @@ function AgentServiceClass:InitDefaultActions()
 				-- Search by name (case insensitive)
 				self:LogAction("AllocNode", "Debug", "Searching for name: " .. tostring(params.name))
 				local targetName = params.name:lower()
+				local partialMatches = {}
 				for _, n in pairs(self.build.spec.tree.nodes) do
-					if n.dn and n.dn:lower() == targetName then
-						node = n
-						break
+					if n.dn then
+						local lowerDn = n.dn:lower()
+						if lowerDn == targetName then
+							node = n
+							break
+						elseif lowerDn:find(targetName, 1, true) then
+							table.insert(partialMatches, n.dn .. " (ID: " .. n.id .. ")")
+						end
 					end
+				end
+				
+				if not node and #partialMatches > 0 then
+					local suggestions = table.concat(partialMatches, ", ")
+					if #partialMatches > 5 then
+						suggestions = table.concat({unpack(partialMatches, 1, 5)}, ", ") .. "..."
+					end
+					return "Erro: No '" .. params.name .. "' nao encontrado. Voce quis dizer: " .. suggestions .. "?"
 				end
 			end
 		else
@@ -314,6 +369,31 @@ function AgentServiceClass:InitDefaultActions()
 		self:LogAction("SetLevel", "Success", "Level set to: " .. level)
 		return "Nivel do personagem alterado para: " .. level
 	end, "Define o nivel do personagem. Params: { level: number }")
+
+	self:RegisterAction("SearchNodes", function(params)
+		if not params.search then return "Erro: search necessario" end
+		local search = params.search:lower()
+		local matches = {}
+		local count = 0
+		
+		for _, n in pairs(self.build.spec.tree.nodes) do
+			if n.dn and n.dn:lower():find(search, 1, true) then
+				table.insert(matches, { name = n.dn, id = n.id })
+				count = count + 1
+				if count >= 10 then break end -- Limit results
+			end
+		end
+		
+		if #matches == 0 then
+			return "Nenhum n\243 encontrado com: " .. params.search
+		end
+		
+		local result = "N\243s encontrados:\n"
+		for _, m in ipairs(matches) do
+			result = result .. "- " .. m.name .. " (ID: " .. m.id .. ")\n"
+		end
+		return result
+	end, "Busca n\243s na \225rvore de passivas pelo nome. Retorna nomes e IDs. Params: { search: string }")
 end
 
 
