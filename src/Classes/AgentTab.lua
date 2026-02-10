@@ -44,7 +44,7 @@ local AgentTabClass = newClass("AgentTab", "ControlHost", "Control", function(se
 	end)
 
 	-- Output Display (History)
-	self.controls.display = new("EditControl", {"TOPLEFT",self,"TOPLEFT"}, {10, 90, 0, 0}, "", "Histórico da conversa aparecerá aqui...", "^%C\t\n", nil, nil, 14, nil)
+	self.controls.display = new("EditControl", {"TOPLEFT",self,"TOPLEFT"}, {10, 90, 0, 0}, "", "Histórico da conversa aparecerá aqui...", "^%C\t\n", nil, nil, 14, false)
 	
 	-- Input (Dynamic Height)
 	self.inputHeight = 20
@@ -70,7 +70,8 @@ local AgentTabClass = newClass("AgentTab", "ControlHost", "Control", function(se
             self.inputHeight = newHeight
             self.controls.input.height = newHeight
         end
-    end, 14, nil) -- nil code ensures wrapping
+    end, 14, false) -- code=false ensures wrapping
+
 
 	-- Override OnKeyDown to capture Enter
 	local superOnKeyDown = self.controls.input.OnKeyDown
