@@ -24,3 +24,8 @@
 [2026-02-10 18:26:05] Action: SendPrompt | Status: Success | Details: ResponseLen: 6409
 [2026-02-10 18:26:05] Action: AllocNode | Status: Debug | Details: Searching for name: Elemental Damage with Attacks
 [2026-02-10 18:26:05] Action: AllocNode | Status: Error | Details: Node not found: Elemental Damage with Attacks
+[2026-02-10 19:06:17] Action: SendPrompt | Status: Sending | Details: URL: http://localhost:11434/api/generate | Model: llama3.1 | BodyLen: 2174
+[2026-02-10 19:06:29] Action: SendPrompt | Status: Success | Details: ResponseLen: 3274
+[2026-02-10 19:06:32] Action: SendPrompt | Status: Sending | Details: URL: http://localhost:11434/api/generate | Model: llama3.1 | BodyLen: 2174
+[2026-02-10 19:07:06] Action: SendPrompt | Status: Success | Details: ResponseLen: 5994
+[2026-02-10 19:07:06] Action: SetLevel | Status: Success | Details: Level set to: 95

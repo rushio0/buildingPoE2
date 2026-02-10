@@ -46,8 +46,29 @@ local AgentTabClass = newClass("AgentTab", "ControlHost", "Control", function(se
 	-- Output Display (History)
 	self.controls.display = new("EditControl", {"TOPLEFT",self,"TOPLEFT"}, {10, 90, 0, 0}, "", "Histórico da conversa aparecerá aqui...", "^%C\t\n", nil, nil, 14, nil)
 	
-	-- Input
-	self.controls.input = new("EditControl", {"BOTTOMLEFT",self,"BOTTOMLEFT"}, {10, -10, 0, 80}, "", "Pergunte ao Agente...", "^%C\t\n", nil, nil, 14, true)
+	-- Input (Dynamic Height)
+	self.inputHeight = 20
+	self.controls.input = new("EditControl", {"BOTTOMLEFT",self,"BOTTOMLEFT"}, {10, -10, 0, 20}, "", "Pergunte ao Agente...", "^%C\t\n", nil, function(buf)
+        -- Dynamic resizing logic
+        local lineCount = 1
+        -- Approx lines based on characters (Average char width ~7px, minimal calc)
+        if #buf > 0 then
+            local width = self.controls.input.width
+            local charWidth = 7 
+            local charsPerLine = math.max(1, math.floor(width / charWidth))
+            lineCount = math.ceil(#buf / charsPerLine)
+            -- Count explicit newlines too
+            local _, newlines = buf:gsub("\n", "")
+            lineCount = math.max(lineCount, newlines + 1)
+        end
+        
+        local newHeight = math.min(60, math.max(20, lineCount * 20))
+        if self.inputHeight ~= newHeight then
+            self.inputHeight = newHeight
+            self.controls.input.height = newHeight
+            -- Force redraw or update layout if needed
+        end
+    end, 14, nil) -- nil at end allows wrapping (code=false)
 
 	-- Override OnKeyDown to capture Enter
 	local superOnKeyDown = self.controls.input.OnKeyDown
@@ -62,22 +83,24 @@ local AgentTabClass = newClass("AgentTab", "ControlHost", "Control", function(se
 		return control
 	end
 	
-	-- Send Button (Small icon or text next to input?) 
-	-- For sidebar, maybe just below input or small button
-	self.controls.send = new("ButtonControl", {"TOPLEFT",self.controls.input,"BOTTOMLEFT"}, {0, 5, 60, 20}, "Enviar", function()
+	-- Send Button (Aligned with Input Bottom) 
+	self.controls.send = new("ButtonControl", {"BOTTOMRIGHT",self,"BOTTOMRIGHT"}, {-10, -10, 60, 20}, "Enviar", function()
 		self:OnSend()
 	end)
 	
-	-- Clear Button
-	self.controls.clear = new("ButtonControl", {"LEFT",self.controls.send,"RIGHT"}, {5, 0, 60, 20}, "Limpar", function()
+	-- Clear Button (Left of Send)
+	self.controls.clear = new("ButtonControl", {"RIGHT",self.controls.send,"LEFT"}, {-5, 0, 60, 20}, "Limpar", function()
 		self.controls.display:SetText("")
 		self.history = {}
 	end)
-
+	
 	-- Layout adjustments
 	self.controls.display.width = function() return self.width - 20 end
-	self.controls.display.height = function() return self.height - 110 - 90 end -- -Input area -Top controls
-	self.controls.input.width = function() return self.width - 20 end
+    -- Display height accounts for Input height dynamic + Top controls (90) + Padding (20)
+	self.controls.display.height = function() return self.height - 90 - self.inputHeight - 20 end 
+	
+    -- Input Width: Full width minus buttons (60*2 + padding)
+	self.controls.input.width = function() return self.width - 20 - 130 end
 	
 	self:UpdateControlsVisibility()
 end)
