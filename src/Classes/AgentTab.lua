@@ -54,6 +54,9 @@ local AgentTabClass = newClass("AgentTab", "ControlHost", "Control", function(se
         -- Approx lines based on characters (Average char width ~7px, minimal calc)
         if #buf > 0 then
             local width = self.controls.input.width
+            if type(width) == "function" then
+                width = width()
+            end
             local charWidth = 7 
             local charsPerLine = math.max(1, math.floor(width / charWidth))
             lineCount = math.ceil(#buf / charsPerLine)
