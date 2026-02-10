@@ -247,7 +247,7 @@ function AgentTabClass:WrapText(text, maxWidth, fontSize)
     if not text or #text == 0 then return "" end
     fontSize = fontSize or 14
     local charWidth = fontSize * 0.55 -- Approximate width factor for variable font
-    local maxChars = math.floor(maxWidth / charWidth)
+    local maxChars = math.max(10, math.floor(maxWidth / charWidth)) -- Minimum 10 chars per line
     
     local lines = {}
     for paragraph in text:gmatch("([^\n]+)") do
@@ -265,25 +265,69 @@ function AgentTabClass:WrapText(text, maxWidth, fontSize)
     return table.concat(lines, "\n")
 end
 
+-- Helper to convert UTF-8 to ANSI (Windows-1252 approximation) for PoB display
+local function utf8_to_ansi(str)
+	if not str then return "" end
+	return str:gsub("[\194-\244][\128-\191]*", function(c)
+		local b1, b2 = c:byte(1, 2)
+		-- Extended Latin1/Windows-1252 mapping
+		if b1 == 194 then
+			if b2 == 160 then return " " end -- Non-breaking space
+		elseif b1 == 195 then
+			if b2 == 128 then return "\192" -- À
+			elseif b2 == 129 then return "\193" -- Á
+			elseif b2 == 130 then return "\194" -- Â
+			elseif b2 == 131 then return "\195" -- Ã
+			elseif b2 == 135 then return "\199" -- Ç
+			elseif b2 == 137 then return "\201" -- É
+			elseif b2 == 138 then return "\202" -- Ê
+			elseif b2 == 141 then return "\205" -- Í
+			elseif b2 == 147 then return "\211" -- Ó
+			elseif b2 == 148 then return "\212" -- Ô
+			elseif b2 == 149 then return "\213" -- Õ
+			elseif b2 == 154 then return "\218" -- Ú
+			elseif b2 == 156 then return "\220" -- Ü
+			elseif b2 == 160 then return "\224" -- à
+			elseif b2 == 161 then return "\225" -- á
+			elseif b2 == 162 then return "\226" -- â
+			elseif b2 == 163 then return "\227" -- ã
+			elseif b2 == 167 then return "\231" -- ç
+			elseif b2 == 169 then return "\233" -- é
+			elseif b2 == 170 then return "\234" -- ê
+			elseif b2 == 173 then return "\237" -- í
+			elseif b2 == 179 then return "\243" -- ó
+			elseif b2 == 180 then return "\244" -- ô
+			elseif b2 == 181 then return "\245" -- õ
+			elseif b2 == 186 then return "\250" -- ú
+			elseif b2 == 188 then return "\252" -- ü
+			end
+		end
+		return "?" -- Fallback for unsupported chars
+	end)
+end
+
 function AgentTabClass:RefreshDisplay()
    -- Rebuild display buffer from history with wrapping
    local fullText = ""
    local width = self.controls.display.width
    if type(width) == "function" then width = width() end
-   -- Account for scrollbar and padding
-   width = width - 30 
+   
+   -- Safely handle width and maxChars
+   width = (width or 300) - 30 
+   if width < 50 then width = 50 end -- Minimum width guard
    
    for _, msg in ipairs(self.history) do
        local prefix = ""
-       if msg.role == "Voc\234" or msg.role == "Voce" or msg.role == "User" then
+       local role = msg.role
+       if role == "Voc\234" or role == "Voce" or role == "User" then
            prefix = "Voc\234: "
-       elseif msg.role == "Agente" then
+       elseif role == "Agente" then
            prefix = "Agente: "
-       elseif msg.role == "Sistema" then
+       elseif role == "Sistema" then
            prefix = "Sistema: "
        end
        
-       local content = msg.content or ""
+       local content = utf8_to_ansi(msg.content) or ""
        -- Basic wrap
        local wrappedContent = self:WrapText(prefix .. content, width, 14)
        
