@@ -65,19 +65,23 @@ local AgentTabClass = newClass("AgentTab", "ControlHost", "Control", function(se
             lineCount = math.max(lineCount, newlines + 1)
         end
         
-        local newHeight = math.min(60, math.max(20, lineCount * 20))
+        local newHeight = math.min(100, math.max(30, lineCount * 20)) -- Min 30px, Max 100px (5 lines)
         if self.inputHeight ~= newHeight then
             self.inputHeight = newHeight
             self.controls.input.height = newHeight
-            -- Force redraw or update layout if needed
         end
-    end, 14, nil) -- nil at end allows wrapping (code=false)
+    end, 14, nil) -- nil code ensures wrapping
 
 	-- Override OnKeyDown to capture Enter
 	local superOnKeyDown = self.controls.input.OnKeyDown
 	self.controls.input.OnKeyDown = function(control, key)
 		if key == "RETURN" then
-			self:OnSend()
+			if IsKeyDown("SHIFT") then
+				-- Insert newline on Shift+Enter
+				control:Insert("\n")
+			else
+				self:OnSend()
+			end
 			return control
 		end
 		if superOnKeyDown then
@@ -137,7 +141,7 @@ function AgentTabClass:OnSend()
 	local text = self.controls.input.buf
 	if not text or text:match("^%s*$") then return end
 	
-	self:AppendMessage("Você", text)
+	self:AppendMessage("Voc\234", text) -- Use ANSI for "Você" explicitly to avoid encoding issues
 	self.controls.input:SetText("")
 	
 	-- Settings from Controls
@@ -238,21 +242,30 @@ end
 
 function AgentTabClass:AppendMessage(role, content)
 	local prefix = ""
-	if role == "Você" then
-		prefix = "Você: "
+	if role == "Voc\234" or role == "Voce" or role == "User" then
+		prefix = "Voc\234: "
 	elseif role == "Agente" then
 		prefix = "Agente: "
 	elseif role == "Sistema" then
 		prefix = "Sistema: "
 	end
 	
-	local ansiContent = utf8_to_ansi(content)
-	local currentText = self.controls.display.buf
-	if currentText and #currentText > 0 then
-		self.controls.display:SetText(currentText .. "\n\n" .. prefix .. ansiContent)
+	-- Fallback for content if nil
+	if not content then content = "" end
+	
+	-- Try direct append first (if supported) using SetText with concatenation
+	local currentText = self.controls.display.buf or ""
+	local newEntry = prefix .. content
+	
+	if #currentText > 0 then
+		self.controls.display:SetText(currentText .. "\n\n" .. newEntry)
 	else
-		self.controls.display:SetText(prefix .. ansiContent)
+		self.controls.display:SetText(newEntry)
 	end
+	
+	-- Scroll to bottom (Set careful position if EditControl allows)
+	-- self.controls.display.selS = #self.controls.display.buf + 1
+	-- self.controls.display:ScrollCaretIntoView()
 end
 
 function AgentTabClass:Draw(viewPort, inputEvents)
