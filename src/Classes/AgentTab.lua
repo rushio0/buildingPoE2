@@ -104,6 +104,7 @@ function AgentTabClass:UpdateControlsVisibility()
 	
 	self.agentService.provider = provider
 	self.agentService.endpoint = self.controls.endpoint.buf
+end
 
 
 function AgentTabClass:OnSend()
