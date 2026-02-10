@@ -2247,8 +2247,15 @@ Huge sets the radius to 11.
 			end
 			return out
 		end},
+
+	-- Section: LLM Agent
+	{ section = "Agente LLM", col = 1 },
+	{ var = "LLM_Provider", type = "list", label = "Provedor:", list = {{val="Ollama", label="Ollama (Local)"}, {val="OpenAI", label="OpenAI (Nuvem)"}}, defaultIndex = 1 },
+	{ var = "LLM_Model", type = "text", label = "Nome do Modelo:", defaultState = "llama3", tooltip = "ex: llama3, gpt-4o" },
+	{ var = "LLM_Endpoint", type = "text", label = "Endpoint da API:", defaultState = "http://localhost:11434/api/generate", tooltip = "Ollama: http://localhost:11434/api/generate\nOpenAI: https://api.openai.com/v1/chat/completions" },
+	{ var = "LLM_ApiKey", type = "text", label = "Chave da API:", defaultState = "", tooltip = "Deixe vazio para Ollama" },
 }
 
-addQuestModsRewardsConfigOptions(configSettings)
+	addQuestModsRewardsConfigOptions(configSettings)
 
 return configSettings

@@ -437,6 +437,11 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 		self.viewMode = "PARTY"
 	end)
 	self.controls.modeParty.locked = function() return self.viewMode == "PARTY" end
+	-- self.controls.modeAgent = new("ButtonControl", {"LEFT",self.controls.modeParty,"RIGHT"}, {4, 0, 72, 20}, "Agente", function()
+	-- 	self.viewMode = "AGENT"
+	-- end)
+	-- self.controls.modeAgent.locked = function() return self.viewMode == "AGENT" end
+
 	-- Skills
 	self.controls.mainSkillLabel = new("LabelControl", {"TOPLEFT",self.anchorSideBar,"TOPLEFT"}, {0, 80, 300, 16}, "^7Main Skill:")
 	self.controls.mainSocketGroup = new("DropDownControl", {"TOPLEFT",self.controls.mainSkillLabel,"BOTTOMLEFT"}, {0, 2, 300, 18}, nil, function(index, value)
@@ -603,6 +608,8 @@ function buildMode:Init(dbFileName, buildName, buildXML, convertBuild, importLin
 	self.treeTab = new("TreeTab", self)
 	self.skillsTab = new("SkillsTab", self)
 	self.calcsTab = new("CalcsTab", self)
+	self.agentTab = new("AgentTab", self)
+
 
 	-- Load sections from the build file
 	self.savers = {
@@ -1126,7 +1133,10 @@ function buildMode:OnFrame(inputEvents)
 					self.viewMode = "NOTES"
 				elseif event.key == "7" then
 					self.viewMode = "PARTY"
+				elseif event.key == "8" then
+					self.viewMode = "AGENT"
 				end
+
 			end
 		elseif event.type == "KeyUp" and event.key == "LEFTBUTTON" and self.controls.pointDisplay:IsMouseInBounds() then
 			self.spec.allocMode = (self.spec.allocMode + 1) % 3
@@ -1173,7 +1183,7 @@ function buildMode:OnFrame(inputEvents)
 		x = sideBarWidth,
 		y = 32,
 		width = main.screenW - sideBarWidth,
-		height = main.screenH - 32
+		height = main.screenH - 32 - 200 -- Reserve 200px for Agent
 	}
 	if self.viewMode == "IMPORT" then
 		self.importTab:Draw(tabViewPort, inputEvents)  
@@ -1191,7 +1201,28 @@ function buildMode:OnFrame(inputEvents)
 		self.itemsTab:Draw(tabViewPort, inputEvents)
 	elseif self.viewMode == "CALCS" then
 		self.calcsTab:Draw(tabViewPort, inputEvents)
+	elseif self.viewMode == "AGENT" then
+		self.agentTab:Draw(tabViewPort, inputEvents)
 	end
+
+	-- Draw Persistent Agent Panel at Top (or Bottom)
+	-- Using Bottom:
+	local agentHeight = 200
+	local agentViewPort = {
+		x = sideBarWidth,
+		y = main.screenH - agentHeight,
+		width = main.screenW - sideBarWidth,
+		height = agentHeight
+	}
+	
+	-- Draw a separator/background for the agent panel
+	SetDrawColor(0.1, 0.1, 0.1)
+	DrawImage(nil, agentViewPort.x, agentViewPort.y, agentViewPort.width, agentViewPort.height)
+	SetDrawColor(0.85, 0.85, 0.85)
+	DrawImage(nil, agentViewPort.x, agentViewPort.y, agentViewPort.width, 2) -- Top border of agent panel
+
+	self.agentTab:Draw(agentViewPort, inputEvents)
+
 
 	self.unsaved = self.modFlag or self.notesTab.modFlag or self.partyTab.modFlag or self.configTab.modFlag or self.treeTab.modFlag or self.treeTab.searchFlag or self.spec.modFlag or self.skillsTab.modFlag or self.itemsTab.modFlag or self.calcsTab.modFlag
 
