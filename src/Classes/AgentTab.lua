@@ -18,6 +18,7 @@ local AgentTabClass = newClass("AgentTab", "ControlHost", "Control", function(se
 	self.agentService = new("AgentService", build)
 
 	self.history = { } 
+    self.lastWidth = 0 
 	
 	-- Controls
 	-- Display (History) - Editable for copy-paste/modification by user
@@ -241,29 +242,66 @@ local function utf8_to_ansi(str)
 	end)
 end
 
+-- Helper to wrap text based on width
+function AgentTabClass:WrapText(text, maxWidth, fontSize)
+    if not text or #text == 0 then return "" end
+    fontSize = fontSize or 14
+    local charWidth = fontSize * 0.55 -- Approximate width factor for variable font
+    local maxChars = math.floor(maxWidth / charWidth)
+    
+    local lines = {}
+    for paragraph in text:gmatch("([^\n]+)") do
+        while #paragraph > maxChars do
+             -- Find split point (space)
+             local splitIndex = paragraph:sub(1, maxChars):find("%s[^%s]*$")
+             if not splitIndex then splitIndex = maxChars end -- Force split if no space
+             
+             table.insert(lines, paragraph:sub(1, splitIndex))
+             paragraph = paragraph:sub(splitIndex + 1)
+        end
+        table.insert(lines, paragraph)
+    end
+    
+    return table.concat(lines, "\n")
+end
+
+function AgentTabClass:RefreshDisplay()
+   -- Rebuild display buffer from history with wrapping
+   local fullText = ""
+   local width = self.controls.display.width
+   if type(width) == "function" then width = width() end
+   -- Account for scrollbar and padding
+   width = width - 30 
+   
+   for _, msg in ipairs(self.history) do
+       local prefix = ""
+       if msg.role == "Voc\234" or msg.role == "Voce" or msg.role == "User" then
+           prefix = "Voc\234: "
+       elseif msg.role == "Agente" then
+           prefix = "Agente: "
+       elseif msg.role == "Sistema" then
+           prefix = "Sistema: "
+       end
+       
+       local content = msg.content or ""
+       -- Basic wrap
+       local wrappedContent = self:WrapText(prefix .. content, width, 14)
+       
+       if fullText ~= "" then
+           fullText = fullText .. "\n\n" .. wrappedContent
+       else
+           fullText = wrappedContent
+       end
+   end
+   
+   self.controls.display:SetText(fullText)
+end
+
 function AgentTabClass:AppendMessage(role, content)
-	local prefix = ""
-	if role == "Voc\234" or role == "Voce" or role == "User" then
-		prefix = "Voc\234: "
-	elseif role == "Agente" then
-		prefix = "Agente: "
-	elseif role == "Sistema" then
-		prefix = "Sistema: "
-	end
-	
-	-- Fallback for content if nil
-	if not content then content = "" end
-	
-	-- Try direct append first (if supported) using SetText with concatenation
-	local currentText = self.controls.display.buf or ""
-	local newEntry = prefix .. content
-	
-	if #currentText > 0 then
-		self.controls.display:SetText(currentText .. "\n\n" .. newEntry)
-	else
-		self.controls.display:SetText(newEntry)
-	end
-	
+    -- Add to history
+    table.insert(self.history, { role = role, content = content })
+    self:RefreshDisplay()
+    
 	-- Scroll to bottom (Set careful position if EditControl allows)
 	-- self.controls.display.selS = #self.controls.display.buf + 1
 	-- self.controls.display:ScrollCaretIntoView()
@@ -276,6 +314,13 @@ function AgentTabClass:Draw(viewPort, inputEvents)
 	self.height = viewPort.height
 	
 	self:ProcessControlsInput(inputEvents, viewPort)
+
+    -- Check for width change to trigger re-wrap
+    if self.width ~= self.lastWidth then
+        self.lastWidth = self.width
+        self:RefreshDisplay()
+    end
+
 	-- main:DrawBackground(viewPort) -- Using footer background from Build.lua
 	self:DrawControls(viewPort)
 end
