@@ -39,3 +39,53 @@
 [2026-02-10 20:25:56] Action: SendPrompt | Status: Sending | Details: URL: http://localhost:11434/api/generate | Model: llama3.1 | BodyLen: 2100
 [2026-02-10 20:26:11] Action: SendPrompt | Status: Success | Details: ResponseLen: 3352
 [2026-02-10 20:27:20] Action: SendPrompt | Status: Sending | Details: URL: http://localhost:11434/api/generate | Model: llama3.1 | BodyLen: 2104
+[2026-02-10 20:30:39] Action: SendPrompt | Status: Sending | Details: URL: http://localhost:11434/api/generate | Model: llama3 | BodyLen: 2098
+[2026-02-10 20:30:39] Action: SendPrompt | Status: Error | Details: Msg: Response code: 404 | Response: table: 0x018befd494f0
+[2026-02-10 20:33:46] Action: RefreshDisplay | Status: Debug | Details: Target width: 262 | History len: 0
+[2026-02-10 20:33:46] Action: RefreshDisplay | Status: Debug | Details: Final text len: 0
+[2026-02-10 20:34:00] Action: OnSend | Status: Debug | Details: Processing text: ola...
+[2026-02-10 20:34:00] Action: RefreshDisplay | Status: Debug | Details: Target width: 262 | History len: 1
+[2026-02-10 20:34:00] Action: RefreshDisplay | Status: Debug | Details: Final text len: 9
+[2026-02-10 20:34:00] Action: RefreshDisplay | Status: Debug | Details: Target width: 262 | History len: 2
+[2026-02-10 20:34:00] Action: RefreshDisplay | Status: Debug | Details: Final text len: 30
+[2026-02-10 20:34:00] Action: SendPrompt | Status: Sending | Details: URL: http://localhost:11434/api/generate | Model: llama3 | BodyLen: 2098
+[2026-02-10 20:34:00] Action: SendPrompt | Status: Error | Details: Msg: Response code: 404 | Response: table: 0x01b7c70fa4c0
+[2026-02-10 20:34:00] Action: RefreshDisplay | Status: Debug | Details: Target width: 262 | History len: 3
+[2026-02-10 20:34:00] Action: RefreshDisplay | Status: Debug | Details: Final text len: 73
+[2026-02-10 20:34:38] Action: OnSend | Status: Debug | Details: Processing text: ola...
+[2026-02-10 20:34:38] Action: RefreshDisplay | Status: Debug | Details: Target width: 262 | History len: 4
+[2026-02-10 20:34:38] Action: RefreshDisplay | Status: Debug | Details: Final text len: 84
+[2026-02-10 20:34:38] Action: RefreshDisplay | Status: Debug | Details: Target width: 262 | History len: 5
+[2026-02-10 20:34:38] Action: RefreshDisplay | Status: Debug | Details: Final text len: 105
+[2026-02-10 20:34:38] Action: SendPrompt | Status: Sending | Details: URL: http://localhost:11434/api/generate | Model: llama3.1 | BodyLen: 2100
+[2026-02-10 20:34:50] Action: SendPrompt | Status: Success | Details: ResponseLen: 3386
+[2026-02-10 20:34:50] Action: RefreshDisplay | Status: Debug | Details: Target width: 262 | History len: 6
+[2026-02-10 20:34:50] Action: RefreshDisplay | Status: Debug | Details: Final text len: 266
+[2026-02-10 20:35:32] Action: OnSend | Status: Debug | Details: Processing text: ola...
+[2026-02-10 20:35:32] Action: RefreshDisplay | Status: Debug | Details: Target width: 262 | History len: 7
+[2026-02-10 20:35:32] Action: RefreshDisplay | Status: Debug | Details: Final text len: 277
+[2026-02-10 20:35:32] Action: RefreshDisplay | Status: Debug | Details: Target width: 262 | History len: 8
+[2026-02-10 20:35:32] Action: RefreshDisplay | Status: Debug | Details: Final text len: 298
+[2026-02-10 20:35:32] Action: SendPrompt | Status: Sending | Details: URL: http://localhost:11434/api/generate | Model: deepseek-v2:16b | BodyLen: 2107
+[2026-02-10 20:40:21] Action: RefreshDisplay | Status: Debug | Details: Target width: 262 | History len: 1
+[2026-02-10 20:40:21] Action: RefreshDisplay | Status: Debug | Details: Final text len: 45
+[2026-02-10 20:40:57] Action: OnSend | Status: Debug | Details: Processing text: Teste 1\nTeste 2
+...
+[2026-02-10 20:40:57] Action: RefreshDisplay | Status: Debug | Details: Target width: 262 | History len: 2
+[2026-02-10 20:40:57] Action: RefreshDisplay | Status: Debug | Details: Final text len: 70
+[2026-02-10 20:40:57] Action: RefreshDisplay | Status: Debug | Details: Target width: 262 | History len: 3
+[2026-02-10 20:40:57] Action: RefreshDisplay | Status: Debug | Details: Final text len: 91
+[2026-02-10 20:40:57] Action: SendPrompt | Status: Sending | Details: URL: http://localhost:11434/api/generate | Model: deepseek-v2:16b | BodyLen: 2123
+[2026-02-10 20:41:00] Action: SendPrompt | Status: Success | Details: ResponseLen: 3497
+[2026-02-10 20:41:00] Action: RefreshDisplay | Status: Debug | Details: Target width: 262 | History len: 4
+[2026-02-10 20:41:00] Action: RefreshDisplay | Status: Debug | Details: Final text len: 130
+[2026-02-10 20:41:00] Action: SetLevel | Status: Success | Details: Level set to: 95
+[2026-02-10 20:41:00] Action: RefreshDisplay | Status: Debug | Details: Target width: 262 | History len: 5
+[2026-02-10 20:41:00] Action: RefreshDisplay | Status: Debug | Details: Final text len: 188
+[2026-02-10 20:45:24] Action: SendPrompt | Status: Sending | Details: URL: http://localhost:11434/api/generate | Model: deepseek-v2:16bola | BodyLen: 2110
+[2026-02-10 20:45:24] Action: SendPrompt | Status: Error | Details: Msg: Response code: 404 | Response: table: 0x019717b3d2f0
+[2026-02-10 20:45:55] Action: SendPrompt | Status: Sending | Details: URL: http://localhost:11434/api/generate | Model: deepseek-v2:16b | BodyLen: 2107
+[2026-02-10 20:45:56] Action: SendPrompt | Status: Success | Details: ResponseLen: 3386
+[2026-02-10 21:08:40] Action: SendPrompt | Status: Sending | Details: URL: http://localhost:11434/api/generate | Model: deepseek-v2:16b | BodyLen: 2119
+[2026-02-10 21:09:19] Action: SendPrompt | Status: Sending | Details: URL: http://localhost:11434/api/generate | Model: deepseek-v2:16b | BodyLen: 2107
+[2026-02-10 21:09:25] Action: SendPrompt | Status: Success | Details: ResponseLen: 3555

@@ -1,0 +1,1 @@
+[20:55:11] RefreshDisplay: Setting text. Len=53 Width=262

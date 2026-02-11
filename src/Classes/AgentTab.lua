@@ -8,6 +8,50 @@ local t_insert = table.insert
 local t_remove = table.remove
 local dkjson = require "dkjson"
 
+
+
+-- Helper to convert UTF-8 to ANSI (Windows-1252 approximation) for PoB display
+local function utf8_to_ansi(str)
+	if not str then return "" end
+	-- Require at least one continuation byte (128-191) for valid UTF-8 multibyte sequence
+	return str:gsub("[\194-\244][\128-\191]+", function(c)
+		local b1, b2 = c:byte(1, 2)
+		-- Extended Latin1/Windows-1252 mapping
+		if b1 == 194 then
+			if b2 == 160 then return " " end -- Non-breaking space
+		elseif b1 == 195 then
+			if b2 == 128 then return "\192" -- À
+			elseif b2 == 129 then return "\193" -- Á
+			elseif b2 == 130 then return "\194" -- Â
+			elseif b2 == 131 then return "\195" -- Ã
+			elseif b2 == 135 then return "\199" -- Ç
+			elseif b2 == 137 then return "\201" -- É
+			elseif b2 == 138 then return "\202" -- Ê
+			elseif b2 == 141 then return "\205" -- Í
+			elseif b2 == 147 then return "\211" -- Ó
+			elseif b2 == 148 then return "\212" -- Ô
+			elseif b2 == 149 then return "\213" -- Õ
+			elseif b2 == 154 then return "\218" -- Ú
+			elseif b2 == 156 then return "\220" -- Ü
+			elseif b2 == 160 then return "\224" -- à
+			elseif b2 == 161 then return "\225" -- á
+			elseif b2 == 162 then return "\226" -- â
+			elseif b2 == 163 then return "\227" -- ã
+			elseif b2 == 167 then return "\231" -- ç
+			elseif b2 == 169 then return "\233" -- é
+			elseif b2 == 170 then return "\234" -- ê
+			elseif b2 == 173 then return "\237" -- í
+			elseif b2 == 179 then return "\243" -- ó
+			elseif b2 == 180 then return "\244" -- ô
+			elseif b2 == 181 then return "\245" -- õ
+			elseif b2 == 186 then return "\250" -- ú
+			elseif b2 == 188 then return "\252" -- ü
+			end
+		end
+		return "?" -- Fallback for unsupported chars
+	end)
+end
+
 local AgentTabClass = newClass("AgentTab", "ControlHost", "Control", function(self, build)
 	self.ControlHost()
 	self.Control()
@@ -17,7 +61,9 @@ local AgentTabClass = newClass("AgentTab", "ControlHost", "Control", function(se
 	-- Agent Service
 	self.agentService = new("AgentService", build)
 
-	self.history = { } 
+	self.history = { 
+        { role = "Sistema", content = "Agente pronto. Digite sua mensagem." } 
+    } 
     self.lastWidth = 0 
 	
 	-- Controls
@@ -242,69 +288,40 @@ local function utf8_to_ansi(str)
 	end)
 end
 
--- Helper to wrap text based on width
+-- Helper to wrap text based on width, preserving newlines
 function AgentTabClass:WrapText(text, maxWidth, fontSize)
     if not text or #text == 0 then return "" end
     fontSize = fontSize or 14
     local charWidth = fontSize * 0.55 -- Approximate width factor for variable font
-    local maxChars = math.max(10, math.floor(maxWidth / charWidth)) -- Minimum 10 chars per line
+    local maxChars = math.max(20, math.floor(maxWidth / charWidth))
     
     local lines = {}
-    for paragraph in text:gmatch("([^\n]+)") do
-        while #paragraph > maxChars do
-             -- Find split point (space)
-             local splitIndex = paragraph:sub(1, maxChars):find("%s[^%s]*$")
-             if not splitIndex then splitIndex = maxChars end -- Force split if no space
-             
-             table.insert(lines, paragraph:sub(1, splitIndex))
-             paragraph = paragraph:sub(splitIndex + 1)
+    -- Split by existing newlines first
+    local paragraphs = {}
+    for p in (text .. "\n"):gmatch("(.-)\n") do
+        table.insert(paragraphs, p)
+    end
+    
+    for _, paragraph in ipairs(paragraphs) do
+        if #paragraph == 0 then
+            table.insert(lines, "")
+        else
+            while #paragraph > maxChars do
+                 -- Find split point (space)
+                 local splitIndex = paragraph:sub(1, maxChars):find("%s[^%s]*$")
+                 if not splitIndex then splitIndex = maxChars end -- Force split if no space
+                 
+                 table.insert(lines, paragraph:sub(1, splitIndex))
+                 paragraph = paragraph:sub(splitIndex + 1)
+            end
+            table.insert(lines, paragraph)
         end
-        table.insert(lines, paragraph)
     end
     
     return table.concat(lines, "\n")
 end
 
--- Helper to convert UTF-8 to ANSI (Windows-1252 approximation) for PoB display
-local function utf8_to_ansi(str)
-	if not str then return "" end
-	return str:gsub("[\194-\244][\128-\191]*", function(c)
-		local b1, b2 = c:byte(1, 2)
-		-- Extended Latin1/Windows-1252 mapping
-		if b1 == 194 then
-			if b2 == 160 then return " " end -- Non-breaking space
-		elseif b1 == 195 then
-			if b2 == 128 then return "\192" -- À
-			elseif b2 == 129 then return "\193" -- Á
-			elseif b2 == 130 then return "\194" -- Â
-			elseif b2 == 131 then return "\195" -- Ã
-			elseif b2 == 135 then return "\199" -- Ç
-			elseif b2 == 137 then return "\201" -- É
-			elseif b2 == 138 then return "\202" -- Ê
-			elseif b2 == 141 then return "\205" -- Í
-			elseif b2 == 147 then return "\211" -- Ó
-			elseif b2 == 148 then return "\212" -- Ô
-			elseif b2 == 149 then return "\213" -- Õ
-			elseif b2 == 154 then return "\218" -- Ú
-			elseif b2 == 156 then return "\220" -- Ü
-			elseif b2 == 160 then return "\224" -- à
-			elseif b2 == 161 then return "\225" -- á
-			elseif b2 == 162 then return "\226" -- â
-			elseif b2 == 163 then return "\227" -- ã
-			elseif b2 == 167 then return "\231" -- ç
-			elseif b2 == 169 then return "\233" -- é
-			elseif b2 == 170 then return "\234" -- ê
-			elseif b2 == 173 then return "\237" -- í
-			elseif b2 == 179 then return "\243" -- ó
-			elseif b2 == 180 then return "\244" -- ô
-			elseif b2 == 181 then return "\245" -- õ
-			elseif b2 == 186 then return "\250" -- ú
-			elseif b2 == 188 then return "\252" -- ü
-			end
-		end
-		return "?" -- Fallback for unsupported chars
-	end)
-end
+
 
 function AgentTabClass:RefreshDisplay()
    -- Rebuild display buffer from history with wrapping
@@ -316,7 +333,6 @@ function AgentTabClass:RefreshDisplay()
    width = (width or 300) - 30 
    if width < 50 then width = 50 end -- Minimum width guard
    
-   for _, msg in ipairs(self.history) do
        local prefix = ""
        local role = msg.role
        if role == "Voc\234" or role == "Voce" or role == "User" then
@@ -327,14 +343,14 @@ function AgentTabClass:RefreshDisplay()
            prefix = "Sistema: "
        end
        
-       local content = utf8_to_ansi(msg.content) or ""
-       -- Basic wrap
-       local wrappedContent = self:WrapText(prefix .. content, width, 14)
+       local content = msg.content or "" -- Skip utf8_to_ansi temporarily if causing issues, or use robust one
+       -- Just raw concat to debug visibility
+       local fullLine = prefix .. content
        
        if fullText ~= "" then
-           fullText = fullText .. "\n\n" .. wrappedContent
+           fullText = fullText .. "\n" .. fullLine
        else
-           fullText = wrappedContent
+           fullText = fullLine
        end
    end
    
@@ -346,9 +362,15 @@ function AgentTabClass:AppendMessage(role, content)
     table.insert(self.history, { role = role, content = content })
     self:RefreshDisplay()
     
-	-- Scroll to bottom (Set careful position if EditControl allows)
-	-- self.controls.display.selS = #self.controls.display.buf + 1
-	-- self.controls.display:ScrollCaretIntoView()
+    -- Scroll to bottom logic:
+    if self.controls.display.SetText then
+         -- Scroll to last valid caret position (end)
+         local len = #(self.controls.display.buf or "")
+         if len > 0 then
+            self.controls.display.caret = len + 1
+            self.controls.display:ScrollCaretIntoView()
+         end
+    end
 end
 
 function AgentTabClass:Draw(viewPort, inputEvents)
@@ -359,9 +381,10 @@ function AgentTabClass:Draw(viewPort, inputEvents)
 	
 	self:ProcessControlsInput(inputEvents, viewPort)
 
-    -- Check for width change to trigger re-wrap
-    if self.width ~= self.lastWidth then
-        self.lastWidth = self.width
+    -- Check for width change to trigger re-wrap, but debounce slightly?
+    local currentWidth = self.width
+    if currentWidth ~= self.lastWidth and currentWidth > 50 then
+        self.lastWidth = currentWidth
         self:RefreshDisplay()
     end
 
