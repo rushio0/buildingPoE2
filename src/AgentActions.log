@@ -89,3 +89,6 @@
 [2026-02-10 21:08:40] Action: SendPrompt | Status: Sending | Details: URL: http://localhost:11434/api/generate | Model: deepseek-v2:16b | BodyLen: 2119
 [2026-02-10 21:09:19] Action: SendPrompt | Status: Sending | Details: URL: http://localhost:11434/api/generate | Model: deepseek-v2:16b | BodyLen: 2107
 [2026-02-10 21:09:25] Action: SendPrompt | Status: Success | Details: ResponseLen: 3555
+[2026-02-10 21:16:48] Action: SendPrompt | Status: Sending | Details: URL: http://localhost:11434/api/generate | Model: deepseek-v2:16b | BodyLen: 2107
+[2026-02-10 21:31:19] Action: SendPrompt | Status: Sending | Details: Provider: Ollama | URL: http://localhost:11434/api/generate | Model: deepseek-v2:16b | BodyLen: 2181
+[2026-02-10 21:32:03] Action: SendPrompt | Status: RawResponse | Details: Len: 3692 | First200: {"model":"deepseek-v2:16b","created_at":"2026-02-11T00:32:03.6021473Z","response":" {\n\"action\": \"AllocNode\",\n\"params\": {\nname: \"SearchNodes\",\nsearch: \"fire damage%20and%20%5B%5D%3C%3Efire

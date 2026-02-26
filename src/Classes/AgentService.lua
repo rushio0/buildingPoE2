@@ -140,21 +140,28 @@ function AgentServiceClass:SendPrompt(userPrompt, history, callback)
 		headers = "Content-Type: application/json\nAuthorization: Bearer " .. self.apiKey
 	end
 
+	if not bodyData then
+		self:LogAction("SendPrompt", "Error", "bodyData is nil for provider: " .. tostring(self.provider))
+		callback(nil, "Provider n\227o suportado ou dados inv\225lidos: " .. tostring(self.provider))
+		return
+	end
+
 	local url = self.endpoint
 	if self.provider == "Google" then
 		url = url .. "?key=" .. self.apiKey
 	end
 
-	self:LogAction("SendPrompt", "Sending", "URL: " .. url .. " | Model: " .. self.model .. " | BodyLen: " .. #bodyData)
+	self:LogAction("SendPrompt", "Sending", "Provider: " .. self.provider .. " | URL: " .. url .. " | Model: " .. self.model .. " | BodyLen: " .. #bodyData)
 
 	launch:DownloadPage(url, function(response, errMsg)
 		if errMsg then
-			self:LogAction("SendPrompt", "Error", "Msg: " .. tostring(errMsg) .. " | Response: " .. tostring(response))
-			callback(nil, "Error: " .. errMsg)
+			self:LogAction("SendPrompt", "Error", "Msg: " .. tostring(errMsg))
+			callback(nil, tostring(errMsg))
 			return
 		end
 		
-		self:LogAction("SendPrompt", "Success", "ResponseLen: " .. #(response.body or ""))
+		local bodyStr = response.body or ""
+		self:LogAction("SendPrompt", "RawResponse", "Len: " .. #bodyStr .. " | First200: " .. bodyStr:sub(1, 200))
 		
 		local responseData, err = dkjson.decode(response.body)
 		if not responseData then

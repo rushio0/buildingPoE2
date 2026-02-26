@@ -8,8 +8,6 @@ local t_insert = table.insert
 local t_remove = table.remove
 local dkjson = require "dkjson"
 
-
-
 -- Helper to convert UTF-8 to ANSI (Windows-1252 approximation) for PoB display
 local function utf8_to_ansi(str)
 	if not str then return "" end
@@ -62,13 +60,11 @@ local AgentTabClass = newClass("AgentTab", "ControlHost", "Control", function(se
 	self.agentService = new("AgentService", build)
 
 	self.history = { 
-        { role = "Sistema", content = "Agente pronto. Digite sua mensagem." } 
-    } 
-    self.lastWidth = 0 
+		{ role = "Sistema", content = "Agente pronto. Digite sua mensagem." } 
+	} 
+	self.lastWidth = 0 
 	
 	-- Controls
-	-- Display (History) - Editable for copy-paste/modification by user
-	-- code=nil to enable wrapping and variable width font
 	-- Provider Selection (Ollama / Google / OpenAI)
 	self.controls.provider = new("DropDownControl", {"TOPLEFT",self,"TOPLEFT"}, {10, 10, 100, 20}, {"Ollama", "Google", "OpenAI"}, function(index, value)
 		self.agentService:SetProvider(value, self.controls.endpoint.buf, self.controls.model.buf, self.controls.apiKey.buf)
@@ -91,33 +87,31 @@ local AgentTabClass = newClass("AgentTab", "ControlHost", "Control", function(se
 	end)
 
 	-- Output Display (History)
-	self.controls.display = new("EditControl", {"TOPLEFT",self,"TOPLEFT"}, {10, 90, 0, 0}, "", "Histórico da conversa aparecerá aqui...", "^%C\t\n", nil, nil, 14, false)
+	self.controls.display = new("EditControl", {"TOPLEFT",self,"TOPLEFT"}, {10, 90, 0, 0}, "", "Chat History...", "^%C\t\n", nil, nil, 14, false)
 	
 	-- Input (Dynamic Height)
 	self.inputHeight = 20
 	self.controls.input = new("EditControl", {"BOTTOMLEFT",self,"BOTTOMLEFT"}, {10, -10, 0, 20}, "", "Pergunte ao Agente...", "^%C\t\n", nil, function(buf)
-        -- Dynamic resizing logic
-        local lineCount = 1
-        -- Approx lines based on characters (Average char width ~7px, minimal calc)
-        if #buf > 0 then
-            local width = self.controls.input.width
-            if type(width) == "function" then
-                width = width()
-            end
-            local charWidth = 7 
-            local charsPerLine = math.max(1, math.floor(width / charWidth))
-            lineCount = math.ceil(#buf / charsPerLine)
-            -- Count explicit newlines too
-            local _, newlines = buf:gsub("\n", "")
-            lineCount = math.max(lineCount, newlines + 1)
-        end
-        
-        local newHeight = math.min(100, math.max(30, lineCount * 20)) -- Min 30px, Max 100px (5 lines)
-        if self.inputHeight ~= newHeight then
-            self.inputHeight = newHeight
-            self.controls.input.height = newHeight
-        end
-    end, 14, false) -- code=false ensures wrapping
+		-- Dynamic resizing logic
+		local lineCount = 1
+		if #buf > 0 then
+			local width = self.controls.input.width
+			if type(width) == "function" then
+				width = width()
+			end
+			local charWidth = 7 
+			local charsPerLine = math.max(1, math.floor(width / charWidth))
+			lineCount = math.ceil(#buf / charsPerLine)
+			local _, newlines = buf:gsub("\n", "")
+			lineCount = math.max(lineCount, newlines + 1)
+		end
+		
+		local newHeight = math.min(100, math.max(30, lineCount * 20))
+		if self.inputHeight ~= newHeight then
+			self.inputHeight = newHeight
+			self.controls.input.height = newHeight
+		end
+	end, 14, false)
 
 
 	-- Override OnKeyDown to capture Enter
@@ -125,7 +119,6 @@ local AgentTabClass = newClass("AgentTab", "ControlHost", "Control", function(se
 	self.controls.input.OnKeyDown = function(control, key)
 		if key == "RETURN" then
 			if IsKeyDown("SHIFT") then
-				-- Insert newline on Shift+Enter
 				control:Insert("\n")
 			else
 				self:OnSend()
@@ -151,10 +144,7 @@ local AgentTabClass = newClass("AgentTab", "ControlHost", "Control", function(se
 	
 	-- Layout adjustments
 	self.controls.display.width = function() return self.width - 20 end
-    -- Display height accounts for Input height dynamic + Top controls (90) + Padding (20)
 	self.controls.display.height = function() return self.height - 90 - self.inputHeight - 20 end 
-	
-    -- Input Width: Full width minus buttons (60*2 + padding)
 	self.controls.input.width = function() return self.width - 20 - 130 end
 	
 	self:UpdateControlsVisibility()
@@ -189,7 +179,7 @@ function AgentTabClass:OnSend()
 	local text = self.controls.input.buf
 	if not text or text:match("^%s*$") then return end
 	
-	self:AppendMessage("Voc\234", text) -- Use ANSI for "Você" explicitly to avoid encoding issues
+	self:AppendMessage("Voc\234", text)
 	self.controls.input:SetText("")
 	
 	-- Settings from Controls
@@ -202,26 +192,39 @@ function AgentTabClass:OnSend()
 	
 	self:AppendMessage("Agente", "Pensando...")
 	
-	-- Prepare history for context
-	-- Ideally we parse self.controls.display.buf back into history, but simplistic approach first
-	local requestHistory = {} 
-	-- TODO: populate requestHistory from self.history if needed for multi-turn
+	-- Prepare history for context (multi-turn)
+	local requestHistory = {}
+	for _, msg in ipairs(self.history) do
+		if msg.role == "Voc\234" or msg.role == "User" then
+			t_insert(requestHistory, { role = "user", content = msg.content })
+		elseif msg.role == "Agente" and msg.content ~= "Pensando..." then
+			t_insert(requestHistory, { role = "assistant", content = msg.content })
+		end
+	end
 	
 	self.agentService:SendPrompt(text, requestHistory, function(response, err)
-		-- Remove "Thinking..."
-		local currentText = self.controls.display.buf
-		local s, e = currentText:find("\nAgente: Pensando...$")
-		if s then
-			self.controls.display:SetText(currentText:sub(1, s-1))
+		-- Remove "Pensando..." from history
+		for i = #self.history, 1, -1 do
+			if self.history[i].role == "Agente" and self.history[i].content == "Pensando..." then
+				t_remove(self.history, i)
+				break
+			end
 		end
 		
 		if err then
-			self:AppendMessage("Sistema", "Erro: " .. err)
+			self:AppendMessage("Sistema", "Erro: " .. tostring(err))
 			return
 		end
 		
-		-- Try to parse as JSON action (Extract JSON if embedded in text)
-		-- Look for { "action": ... } pattern or just the first { ... } block
+		if not response or response == "" then
+			self:AppendMessage("Sistema", "Erro: Resposta vazia do LLM")
+			return
+		end
+		
+		-- Convert UTF-8 response to ANSI for display
+		response = utf8_to_ansi(response)
+		
+		-- Try to parse as JSON action
 		local jsonStart, jsonEnd = response:find("%b{}")
 		local actionData
 		
@@ -247,130 +250,88 @@ function AgentTabClass:OnSend()
 	end)
 end
 
--- Helper to convert UTF-8 to ANSI (Windows-1252 approximation) for PoB display
-local function utf8_to_ansi(str)
-	if not str then return "" end
-	return str:gsub("[\194-\244][\128-\191]*", function(c)
-		local b1, b2 = c:byte(1, 2)
-		-- Extended Latin1/Windows-1252 mapping
-		if b1 == 194 then
-			if b2 == 160 then return " " end -- Non-breaking space
-		elseif b1 == 195 then
-			if b2 == 128 then return "\192" -- À
-			elseif b2 == 129 then return "\193" -- Á
-			elseif b2 == 130 then return "\194" -- Â
-			elseif b2 == 131 then return "\195" -- Ã
-			elseif b2 == 135 then return "\199" -- Ç
-			elseif b2 == 137 then return "\201" -- É
-			elseif b2 == 138 then return "\202" -- Ê
-			elseif b2 == 141 then return "\205" -- Í
-			elseif b2 == 147 then return "\211" -- Ó
-			elseif b2 == 148 then return "\212" -- Ô
-			elseif b2 == 149 then return "\213" -- Õ
-			elseif b2 == 154 then return "\218" -- Ú
-			elseif b2 == 156 then return "\220" -- Ü
-			elseif b2 == 160 then return "\224" -- à
-			elseif b2 == 161 then return "\225" -- á
-			elseif b2 == 162 then return "\226" -- â
-			elseif b2 == 163 then return "\227" -- ã
-			elseif b2 == 167 then return "\231" -- ç
-			elseif b2 == 169 then return "\233" -- é
-			elseif b2 == 170 then return "\234" -- ê
-			elseif b2 == 173 then return "\237" -- í
-			elseif b2 == 179 then return "\243" -- ó
-			elseif b2 == 180 then return "\244" -- ô
-			elseif b2 == 181 then return "\245" -- õ
-			elseif b2 == 186 then return "\250" -- ú
-			elseif b2 == 188 then return "\252" -- ü
-			end
-		end
-		return "?" -- Fallback for unsupported chars
-	end)
-end
-
 -- Helper to wrap text based on width, preserving newlines
 function AgentTabClass:WrapText(text, maxWidth, fontSize)
-    if not text or #text == 0 then return "" end
-    fontSize = fontSize or 14
-    local charWidth = fontSize * 0.55 -- Approximate width factor for variable font
-    local maxChars = math.max(20, math.floor(maxWidth / charWidth))
-    
-    local lines = {}
-    -- Split by existing newlines first
-    local paragraphs = {}
-    for p in (text .. "\n"):gmatch("(.-)\n") do
-        table.insert(paragraphs, p)
-    end
-    
-    for _, paragraph in ipairs(paragraphs) do
-        if #paragraph == 0 then
-            table.insert(lines, "")
-        else
-            while #paragraph > maxChars do
-                 -- Find split point (space)
-                 local splitIndex = paragraph:sub(1, maxChars):find("%s[^%s]*$")
-                 if not splitIndex then splitIndex = maxChars end -- Force split if no space
-                 
-                 table.insert(lines, paragraph:sub(1, splitIndex))
-                 paragraph = paragraph:sub(splitIndex + 1)
-            end
-            table.insert(lines, paragraph)
-        end
-    end
-    
-    return table.concat(lines, "\n")
+	if not text or #text == 0 then return "" end
+	fontSize = fontSize or 14
+	local charWidth = fontSize * 0.55
+	local maxChars = math.max(20, math.floor(maxWidth / charWidth))
+	
+	local lines = {}
+	local paragraphs = {}
+	for p in (text .. "\n"):gmatch("(.-)\n") do
+		table.insert(paragraphs, p)
+	end
+	
+	for _, paragraph in ipairs(paragraphs) do
+		if #paragraph == 0 then
+			table.insert(lines, "")
+		else
+			while #paragraph > maxChars do
+				local splitIndex = paragraph:sub(1, maxChars):find("%s[^%s]*$")
+				if not splitIndex then splitIndex = maxChars end
+				
+				table.insert(lines, paragraph:sub(1, splitIndex))
+				paragraph = paragraph:sub(splitIndex + 1)
+			end
+			table.insert(lines, paragraph)
+		end
+	end
+	
+	return table.concat(lines, "\n")
 end
-
 
 
 function AgentTabClass:RefreshDisplay()
-   -- Rebuild display buffer from history with wrapping
-   local fullText = ""
-   local width = self.controls.display.width
-   if type(width) == "function" then width = width() end
-   
-   -- Safely handle width and maxChars
-   width = (width or 300) - 30 
-   if width < 50 then width = 50 end -- Minimum width guard
-   
-       local prefix = ""
-       local role = msg.role
-       if role == "Voc\234" or role == "Voce" or role == "User" then
-           prefix = "Voc\234: "
-       elseif role == "Agente" then
-           prefix = "Agente: "
-       elseif role == "Sistema" then
-           prefix = "Sistema: "
-       end
-       
-       local content = msg.content or "" -- Skip utf8_to_ansi temporarily if causing issues, or use robust one
-       -- Just raw concat to debug visibility
-       local fullLine = prefix .. content
-       
-       if fullText ~= "" then
-           fullText = fullText .. "\n" .. fullLine
-       else
-           fullText = fullLine
-       end
-   end
-   
-   self.controls.display:SetText(fullText)
+	-- Rebuild display buffer from history with wrapping
+	local fullText = ""
+	local width = self.controls.display.width
+	if type(width) == "function" then width = width() end
+	
+	-- Safely handle width
+	width = (width or 300) - 30 
+	if width < 50 then width = 50 end
+	
+	for _, msg in ipairs(self.history) do
+		local prefix = ""
+		local role = msg.role
+		if role == "Voc\234" or role == "Voce" or role == "User" then
+			prefix = "Voc\234: "
+		elseif role == "Agente" then
+			prefix = "Agente: "
+		elseif role == "Sistema" then
+			prefix = "Sistema: "
+		end
+		
+		local content = msg.content or ""
+		local fullLine = prefix .. content
+		
+		-- Apply text wrapping to fit the dialog box
+		fullLine = self:WrapText(fullLine, width, 14)
+		
+		if fullText ~= "" then
+			fullText = fullText .. "\n" .. fullLine
+		else
+			fullText = fullLine
+		end
+	end
+	
+	self.controls.display:SetText(fullText)
 end
 
 function AgentTabClass:AppendMessage(role, content)
-    -- Add to history
-    table.insert(self.history, { role = role, content = content })
-    self:RefreshDisplay()
-    
-    -- Scroll to bottom logic:
-    if self.controls.display.SetText then
-         -- Scroll to last valid caret position (end)
-         local len = #(self.controls.display.buf or "")
-         if len > 0 then
-            self.controls.display.caret = len + 1
-            self.controls.display:ScrollCaretIntoView()
-         end
-    end
+	-- Add to history
+	table.insert(self.history, { role = role, content = content })
+	self:RefreshDisplay()
+	
+	-- Scroll to bottom
+	if self.controls.display.SetText then
+		local len = #(self.controls.display.buf or "")
+		if len > 0 then
+			self.controls.display.caret = len + 1
+			self.controls.display:ScrollCaretIntoView()
+		end
+	end
 end
 
 function AgentTabClass:Draw(viewPort, inputEvents)
@@ -381,14 +342,13 @@ function AgentTabClass:Draw(viewPort, inputEvents)
 	
 	self:ProcessControlsInput(inputEvents, viewPort)
 
-    -- Check for width change to trigger re-wrap, but debounce slightly?
-    local currentWidth = self.width
-    if currentWidth ~= self.lastWidth and currentWidth > 50 then
-        self.lastWidth = currentWidth
-        self:RefreshDisplay()
-    end
+	-- Re-wrap on width change
+	local currentWidth = self.width
+	if currentWidth ~= self.lastWidth and currentWidth > 50 then
+		self.lastWidth = currentWidth
+		self:RefreshDisplay()
+	end
 
-	-- main:DrawBackground(viewPort) -- Using footer background from Build.lua
 	self:DrawControls(viewPort)
 end
 
